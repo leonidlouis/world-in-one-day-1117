@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 mkdirSync('build',{recursive:true});
-const profile=mkdtempSync(resolve('build/chrome-r2-'));
+const profile=mkdtempSync(resolve('build/chrome-render-'));
 for(const dir of ['config','data','cache'])mkdirSync(`${profile}/${dir}`);
 const child=spawn('/usr/bin/google-chrome',[
  '--headless=new','--no-sandbox','--disable-gpu','--disable-dev-shm-usage',
@@ -50,6 +50,7 @@ try{
   for(const p of document.querySelectorAll('.story')){
    const id=p.dataset.id,[x,y,w,h]=p.dataset.box.split(',').map(Number),words=[...p.querySelectorAll('text.copy')].map(ink);
    const icons=[...p.querySelectorAll('[data-avoid]')].map(el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,w:b.width,h:b.height};});
+   for(const b of icons)if(b.x<x-.5||b.y<y-.5||b.x+b.w>x+w+.5||b.y+b.h>y+h+.5)issues.push({id,type:'illustration outside panel',...b});
    for(const a of words){if(a.x<x-.5||a.x+a.w>x+w+.5||a.y<y-.5||a.y+a.h>y+h+.5)issues.push({id,type:'outside panel',...a});for(const b of icons)if(intersect(a,b))issues.push({id,type:'text/icon overlap',...a});}
    words.forEach((a,i)=>words.slice(i+1).forEach(b=>{if(intersect(a,b))issues.push({id,type:'text/text overlap',a:a.text,b:b.text});}));
    boxes.push({id,x,y,w,h});

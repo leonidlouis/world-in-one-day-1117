@@ -1,126 +1,72 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { C, esc, rect, line, path, circle, group, stroke, symbol } from './art.mjs';
-import { tanker, bridges, summit, climate } from './lead-art.mjs';
-import { stories } from './stories.mjs';
+import {mkdirSync,writeFileSync} from 'node:fs';
+import {C,esc,rect,path,circle,line,stroke,group} from './art.mjs';
+import {scenes} from './scenes.mjs';
+import {regions,illustrated,briefs,stories} from './stories.mjs';
 
-const topic = {conflict:'#b83530',politics:'#17374e',economy:'#a16b20',climate:'#42794e',society:'#247a7c',sport:'#bf651e'};
-const backgrounds = {conflict:'#f5e8de',politics:'#e4e8e6',economy:'#f0e6cf',climate:'#e3ebdc',society:'#e1ebe5',sport:'#f5e5d3'};
-// Real SVG text is rasterized by Chrome. Width and collision checks run in the browser.
-const txt=(x,y,s,size=12,weight=450,fill=C.ink,cls='sans',extra='')=>`<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" fill="${fill}" class="copy ${cls}" ${extra}>${esc(s)}</text>`;
-const copyLines=(x,y,lines,size,leading,weight=450,cls='sans')=>lines.map((a,i)=>txt(x,y+i*leading,a,size,weight,C.ink,cls)).join('');
-const badge=(x,y,id,color,size=16)=>rect(x,y,size,13,color,1)+txt(x+size/2,y+9.6,id,9.2,750,C.paper,'sans','text-anchor="middle"');
-const panel=(d,x,y,w,h,content)=>`<g class="story" data-id="${d.id}" data-box="${x},${y},${w},${h}">${content}</g>`;
-const picture=(d,x,y,scale)=>`<g class="illustration" data-avoid="1">${group(x,y,scale,symbol(d.icon))}</g>`;
-const rules=[];
-let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><style>
- .sans{font-family:'Source Sans 3',sans-serif}.cond{font-family:'Barlow Condensed',sans-serif}.serif{font-family:'Fraunces',serif}
+const text=(x,y,s,size=12,weight=450,fill=C.ink,cls='sans',extra='')=>`<text x="${x}" y="${y}" class="copy ${cls}" font-size="${size}" font-weight="${weight}" fill="${fill}" ${extra}>${esc(s)}</text>`;
+const lines=(x,y,list,size,leading,weight=450,cls='sans')=>list.map((s,i)=>text(x,y+i*leading,s,size,weight,C.ink,cls)).join('');
+const story=(d,x,y,w,h,content)=>`<g class="story" data-id="${d.id}" data-box="${x},${y},${w},${h}">${content}</g>`;
+let s=`<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><style>
+ .sans{font-family:'Source Sans 3',sans-serif}.serif{font-family:'DejaVu Serif',serif}
  text{font-kerning:normal;text-rendering:geometricPrecision}</style>${rect(0,0,1024,1024,C.paper)}`;
-svg+=txt(18,22,'THE WORLD IN ONE DAY',17,650,C.ink,'serif')+txt(1006,21,'48 REPORTS • SIX CONTINENTS',10,700,C.red,'sans','text-anchor="end" letter-spacing="1.5"');
-svg+=txt(512,86,'TUESDAY 17 NOVEMBER 2026',67,800,C.ink,'cond','id="date" text-anchor="middle" textLength="988" lengthAdjust="spacingAndGlyphs"');
-svg+=line(18,97,1006,97,C.ink,2.5);
+s+=text(18,18,'THE DAY IN WORLD NEWS',9.5,750,C.ink,'sans','letter-spacing="1.8"')+text(1006,18,'43 STORIES · 6 CONTINENTS · ONE DAY',9.5,750,C.ink,'sans','text-anchor="end" letter-spacing="1.2"');
+s+=text(512,95,'Tuesday 17 November 2026',90,700,C.ink,'serif','id="date" text-anchor="middle" textLength="988" lengthAdjust="spacingAndGlyphs"');
+s+=line(18,120,1006,120,C.ink,1.2);
 
-// The day in seven figures, with claims and approximate figures labelled.
-const figures=[
- [176,'DOW','−1.64%  TO 50,759'],[176,'S&P 500','−1.03%  TO 7,340'],[112,'BRENT CRUDE','$93.14'],
- [124,'HORMUZ','5+ SHIPS HIT'],[174,'RUSSIA SAYS / 24 HOURS','2,000+ DRONES DOWN'],[106,'COP31','DAY 9'],[120,'SYRIANS RETURNED','NEARLY 4M']
-];
-let fx=18;svg+=rect(18,104,988,34,C.ink);
-figures.forEach(([w,label,value],i)=>{svg+=txt(fx+9,115,label,8.5,650,'#d6e0dc','sans','letter-spacing=".6"')+txt(fx+9,131,value,14,750,i===5?'#f0bf68':C.paper,'cond');if(i)svg+=line(fx,109,fx,133,'#4c626c',.7);fx+=w;});
+const figures=[['5+','SHIPS HIT IN HORMUZ'],['11,000+','EBOLA CASES · DR CONGO'],['$115.8bn','NVIDIA Q3 REVENUE'],['−848','DOW POINTS · −1.64%'],['56–44','DEMOCRATIC SENATE MAJORITY'],['46','INJURED IN PRAGUE']];
+figures.forEach(([value,caption],i)=>{const x=18+i*166;s+=text(x+79,152,value,27,750,C.ink,'sans','text-anchor="middle"')+text(x+79,167,caption,7.9,650,C.muted,'sans','text-anchor="middle" letter-spacing=".4"');if(i)s+=line(x-7,131,x-7,169,'#bfc4ba',.6);});
 
-const art={tanker,bridges,summit,climate};
-stories.slice(0,4).forEach((d,i)=>{
- const x=18+i*250,y=149,w=238,h=194;
- let p=badge(x,y,d.id,topic[d.topic])+txt(x+23,y+10,d.region,10,750,topic[d.topic],'sans','letter-spacing=".6"');
- p+=`<g class="illustration" data-avoid="1" transform="translate(${x} 168)">${art[d.art]()}</g>`;
- p+=copyLines(x,271,d.head,26,26,750,'cond')+copyLines(x,313,d.lines,11.5,12.5);
- svg+=panel(d,x,y,w,h,p);
- if(i<3)svg+=line(x+w+6,149,x+w+6,342,C.rule,.8);
-});
-svg+=line(18,348,1006,348,C.ink,1.5);
-
-function medium(d,x,y,w,h,wide=false){
- const title=wide?17.5:17;
- let p=badge(x,y,d.id,topic[d.topic])+txt(x+22,y+10,d.region,wide?9.4:8.7,750,topic[d.topic],'sans');
- // Two headline lines have a reserved right-hand illustration gutter.
- p+=picture(d,x+w-36,y+24,.42)+copyLines(x,y+32,d.head,title,17.5,750,'cond');
- p+=copyLines(x,y+65,d.lines,wide?10.4:9.8,11.5);
- svg+=panel(d,x,y,w,h,p);
+function tile(d,x,y,w,h,lead){
+ const color=regions[d.region].color,artH=lead?135:61,bandH=lead?15:11,picH=artH+bandH;
+ let p=line(x,y-4,x+w,y-4,color,1.6)+`<g class="illustration" data-avoid="1" transform="translate(${x} ${y})">${scenes[d.scene]()}</g>`;
+ p+=rect(x,y+artH,w,bandH,C.ink)+text(x+7,y+picH-(lead?4:2.7),d.caption,lead?10:8.1,700,C.cream,'sans',lead?'letter-spacing=".5"':'letter-spacing=".2"');
+ p+=text(x+1,y+picH+13,`${d.id} · ${d.kicker}`,lead?9:7.5,750,color,'sans',lead?'letter-spacing=".7"':'letter-spacing=".35"');
+ p+=lines(x+1,y+(lead?187:101),d.head,lead?25.5:16.3,lead?27:17.5,700,'serif');
+ p+=lines(x+1,y+(lead?234:139),d.deck,lead?12.2:10.6,lead?14.8:12.5);
+ s+=story(d,x,y,w,h,p);
 }
-medium(stories[4],18,360,208,84,true);
-medium(stories[5],18,453,208,90,true);
-medium(stories[6],798,360,208,84,true);
-medium(stories[7],798,453,208,88,true);
+illustrated.slice(0,3).forEach((d,i)=>tile(d,18+i*334,180,320,255,true));
+s+=line(18,439,1006,439,'#a9b0a7',.8);
+illustrated.slice(3).forEach((d,i)=>tile(d,18+(i%5)*200,448+Math.floor(i/5)*168,188,157,false));
+s+=line(18,778,1006,778,C.ink,1.2);
 
-function world(){
- let m=rect(0,0,548,181,C.ink,2);
- const mt=(x,y,s,size=8,fill='#e8eee8',extra='')=>`<text x="${x}" y="${y}" class="sans" font-size="${size}" font-weight="650" fill="${fill}" ${extra}>${esc(s)}</text>`;
- m+=mt(12,14,'THE WORLD, LOCATED',10,C.paper,'letter-spacing="1.4"')+mt(536,14,'Numbered pins grouped by region',8,'#c6d5d0','text-anchor="end"');
- m+=`<g stroke="#3a5360" stroke-width=".6"><path d="M9 69H539M9 113H539M100 23V162M200 23V162M300 23V162M400 23V162M500 23V162"/></g>`;
- const land='#6d8b8d';
+// Locator: thirteen numbered story pins; each brief also receives a small dot.
+function map(){
+ let m=rect(0,0,268,142,'#e2e8df',2);
+ const land='#bdc8b5';
  const continents=[
- 'M28 45L44 32L74 29L95 40L114 38L133 51L117 65L104 72L97 90L79 87L70 75L53 72L49 58L35 58ZM105 87L121 94L126 103L117 107L108 99Z',
- 'M126 105L149 108L163 124L156 140L145 150L138 168L126 157L123 139L113 124Z',
- 'M139 29L158 23L171 29L160 44L146 46Z',
- 'M230 47L243 41L257 47L264 39L285 39L297 29L322 27L345 33L363 29L392 36L422 42L439 54L426 68L402 67L387 79L372 81L361 73L350 78L347 91L332 92L327 78L310 77L297 68L281 73L271 62L253 65L238 61Z',
- 'M239 69L262 69L279 82L284 102L271 126L255 134L244 119L237 103L226 90Z',
- 'M291 77L307 81L317 97L327 99L329 111L318 108L306 98L299 99Z',
- 'M348 91L357 97L364 113L375 116L376 124L360 122L349 109Z',
- 'M383 110L398 114L402 121L387 123ZM397 132L415 122L438 125L453 141L446 155L419 158L400 150Z',
- 'M466 145L473 143L469 159L459 165ZM435 67L440 76L435 86L429 82ZM377 96L381 104L377 113L373 103ZM282 130L286 139L281 149L277 143Z'
+  'M10 25L28 14L48 18L65 10L78 22L67 35L60 45L53 49L52 60L40 59L28 47L16 45ZM54 58L63 67L59 73L53 66Z',
+  'M61 72L78 75L89 89L82 106L72 116L67 131L59 117L56 99L48 85Z',
+  'M80 8L96 8L101 17L88 25L78 19Z',
+  'M129 28L142 22L154 28L161 21L169 30L161 40L148 40L140 46L132 40Z',
+  'M129 46L148 43L163 55L165 77L154 99L140 105L132 89L127 70L118 58Z',
+  'M154 24L174 15L199 18L224 15L244 31L245 46L228 52L223 64L209 66L199 58L189 66L180 62L179 75L166 71L158 55L150 48L157 40Z',
+  'M182 67L194 76L200 89L214 94L217 101L201 99L190 89ZM222 77L227 84L224 92L220 86Z',
+  'M207 106L220 99L238 104L247 119L239 130L219 132L206 121ZM252 122L256 120L253 133L248 138Z',
+  'M246 47L249 55L246 66L242 61ZM169 103L173 110L170 119L167 114Z'
  ];
- m+=`<g transform="translate(24 5) scale(1.025 .92)">${continents.map(d=>path(d,land)).join('')}</g>`;
- const pin=(d,x,y)=>circle(x,y,7.1,topic[d.topic],C.paper,.7)+mt(x,y+2.8,d.id,7.7,C.paper,'text-anchor="middle"');
- const sets=[
-  ['northamerica',14,43,3,18,16,119,70,'NORTH AMERICA',12,30],
-  ['europe',204,44,5,18,16,272,67,'EUROPE',205,31],
-  ['middleeast',285,93,5,18,16,302,87,'MIDDLE EAST',284,139],
-  ['africa',221,143,2,18,16,283,120,'AFRICA',211,160],
-  ['southamerica',110,135,2,18,16,160,118,'SOUTH AMERICA',88,159],
-  ['global',498,47,2,18,16,0,0,'GLOBAL',489,31]
- ];
- const used=new Set();
- for(const [place,x,y,cols,dx,dy,ax,ay,label,lx,ly] of sets){
-  const list=stories.filter(d=>d.place===place);
-  if(ax)m+=stroke(`M${x+8} ${y+10}L${ax} ${ay}`,'#a2b8b7',.7)+circle(ax,ay,1.7,C.paper);
-  m+=mt(lx,ly,label,7.9,C.paper,'letter-spacing=".8"');
-  list.forEach((d,i)=>{m+=pin(d,x+(i%cols)*dx,y+Math.floor(i/cols)*dy);used.add(d.id);});
- }
- const asiaPositions=[[411,94],[374,48],[425,48],[415,121]];
- stories.filter(d=>d.place==='asia').forEach((d,i)=>{const [x,y]=asiaPositions[i];m+=pin(d,x,y);used.add(d.id);});
- m+=mt(374,31,'ASIA',7.9,C.paper,'letter-spacing=".8"');
- for(const d of stories.filter(d=>d.place==='oceania')){m+=pin(d,469,146);used.add(d.id);}
- m+=mt(435,163,'AUSTRALIA',7.9,C.paper,'letter-spacing=".8"');
- m+=line(10,167,538,167,'#536b73',.6);
- Object.entries(topic).forEach(([name,color],i)=>{const x=12+i*87;m+=circle(x,175,3,color,'#d6e0dc',.4)+mt(x+7,178,name.toUpperCase(),7.3,C.paper);});
- if(used.size!==48)throw new Error('All 48 stories need map pins');
+ m+=continents.map(d=>path(d,land)).join('');
+ for(const d of briefs){const [x,y]=d.point;m+=circle(x,y,1.5,regions[d.region].color);}
+ // The measles report covers three named countries, linked to one numbered pin.
+ m+=stroke('M92 81L42 43M92 81L45 63M92 81L71 100','#a68963',.5);
+ for(const d of illustrated){const color=regions[d.region].color,[ax,ay]=d.point,[px,py]=d.pin;m+=line(ax,ay,px,py,color,.65)+circle(ax,ay,1.4,color)+circle(px,py,6.2,color,C.paper,.7)+`<text x="${px}" y="${py+2.5}" class="sans" font-size="7.4" font-weight="750" fill="${C.cream}" text-anchor="middle">${d.id}</text>`;}
  return m;
 }
-svg+=group(238,360,1,world());
-svg+=line(18,548,1006,548,C.ink,1.5);
-stories.slice(8,14).forEach((d,i)=>{
- medium(d,18+i*166,558,158,83,false);
- if(i<5)svg+=line(180+i*166,558,180+i*166,641,C.rule,.7);
+s+=text(18,794,'WHERE IT HAPPENED',11.5,700,C.ink,'serif','letter-spacing=".5"');
+s+=group(18,807,1,map());
+Object.values(regions).forEach((r,i)=>{const x=18+(i%3)*89,y=962+Math.floor(i/3)*12;s+=circle(x+3,y-2,2.5,r.color)+text(x+10,y,r.name,7.2,650,C.muted);});
+s+=text(18,989,'1–13: illustrated stories · small dots: briefs',7.3,500,C.muted);
+s+=text(306,794,'ALSO ON TUESDAY 17 NOVEMBER',12.4,700,C.ink,'serif','letter-spacing=".3"');
+briefs.forEach((d,i)=>{
+ const col=Math.floor(i/15),row=i%15,x=306+col*355,y=810+row*12.8,w=345,color=regions[d.region].color;
+ const chip=rect(x,y-8,16,9.5,color,1)+text(x+8,y-.6,d.id,7.2,750,C.cream,'sans','text-anchor="middle"');
+ const copy=`<text x="${x+22}" y="${y}" class="copy sans" font-size="10.8" font-weight="450" fill="${C.ink}"><tspan font-weight="750">${esc(d.place)}:</tspan><tspan> ${esc(d.fact)}</tspan></text>`;
+ s+=story(d,x,y-11,w,14,chip+copy);
 });
-svg+=line(18,648,1006,648,C.ink,1.5);
-
-// 34 concise briefs: six columns, six rows. Every item has its own pictogram.
-stories.slice(14).forEach((d,i)=>{
- const col=i%6,row=Math.floor(i/6),x=18+col*166,y=657+row*56,w=158,h=54;
- let p=badge(x,y,d.id,topic[d.topic],16)+picture(d,x+w-21,y,.255);
- p+=copyLines(x+22,y+11,d.head,13,12.8,750,'cond');
- const by=y+(d.head.length===1?27:37);
- p+=copyLines(x,by,d.lines,9.7,10.8);
- svg+=panel(d,x,y,w,h,p);
- if(col<5)rules.push(line(x+w+4,y,x+w+4,y+h,C.rule,.6));
- if(row<5)rules.push(line(x,y+52,x+w,y+52,'#cccbc0',.6));
-});
-svg+=rules.join('');
-// The two remaining grid cells provide a transparent date and attribution key.
-svg+=rect(682,937,324,54,'#e8e6d9',2)+txt(691,951,'READING THIS FRONT PAGE',10.3,750,C.ink,'cond')+txt(691,963,'Tuesday reports • Prior outages dated • Future events labelled',9.3,500)+txt(691,975,'Claims attributed; draft targets are proposals. Map pins match story IDs.',9.3,500)+txt(691,987,'Only news source: supplied verified 17 November fact sheet.',9.3,500);
-svg+=line(18,1000,1006,1000,C.ink,1.5)+txt(18,1014,'17 NOVEMBER 2026 • 48 NUMBERED REPORTS • ONE WORLD',9,700,C.ink,'sans','letter-spacing=".8"')+txt(1006,1014,'WAR / DIPLOMACY / MARKETS / CLIMATE / SOCIETY / SPORT',8.5,650,C.ink,'sans','text-anchor="end"');
-svg+='</svg>';
+s+=line(18,997,1006,997,C.ink,.8)+text(18,1008,'Every story here happened or was first reported on 17 November 2026. Claims by warring sides are attributed.',8.2,500,C.ink)+text(18,1019,'Sources: supplied verified fact sheets · Reuters · AP · WHO · PAHO · Nvidia · Al Jazeera · Euronews · BBC.',8.1,450,C.muted);
+s+='</svg>';
 mkdirSync('build',{recursive:true});
-writeFileSync('build/entry.svg',svg);
+writeFileSync('build/entry.svg',s);
+writeFileSync('build/entry.html',`<!doctype html><meta charset="utf-8"><style>html,body{margin:0;width:1024px;height:1024px;overflow:hidden;background:${C.paper}}svg{display:block}</style>${s}`);
 writeFileSync('build/story-index.json',JSON.stringify(stories,null,2));
-writeFileSync('build/entry.html',`<!doctype html><meta charset="utf-8"><style>html,body{margin:0;width:1024px;height:1024px;overflow:hidden;background:${C.paper}}svg{display:block}</style>${svg}`);
-console.log(`Built ${stories.length} numbered news panels and map pins.`);
+console.log('Built 43 stories: 3 leads, 10 medium scenes, 30 one-line briefs.');

@@ -7,13 +7,14 @@ pass_id = sys.argv[1]
 root = Path('build') / f'review-{pass_id}'
 root.mkdir(parents=True, exist_ok=True)
 image = Image.open('assets/entry.png').convert('RGB')
+image.save(root / 'full-1024.png')
 regions = {
- 'top-left': (0, 0, 512, 350),
- 'top-right': (512, 0, 1024, 350),
- 'middle-left': (0, 348, 512, 650),
- 'middle-right': (512, 348, 1024, 650),
- 'bottom-left': (0, 650, 512, 1024),
- 'bottom-right': (512, 650, 1024, 1024),
+ 'top-left': (0, 0, 512, 440),
+ 'top-right': (512, 0, 1024, 440),
+ 'middle-left': (0, 440, 512, 780),
+ 'middle-right': (512, 440, 1024, 780),
+ 'bottom-left': (0, 780, 512, 1024),
+ 'bottom-right': (512, 780, 1024, 1024),
 }
 for name, box in regions.items():
  crop = image.crop(box)
