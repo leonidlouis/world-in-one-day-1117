@@ -6,9 +6,14 @@ Entry for the [make.fun bounty](https://make.fun/bounty/news-image-20261117): su
 
 # The World in One Day — 17 November 2026
 
-An original illustrated newspaper front page: four lead stories, a world locator map,
-regional reports, markets, health, technology and sport. All news copy comes from the
-provided verified `facts1117.md`; disputed claims and future plans are attributed.
+An original illustrated newspaper front page with **48 numbered news panels**:
+four illustrated leads, ten medium panels and 34 concise briefs. Related developments
+share panels to cover the supplied fact sheet across six continents. Every panel has
+an illustration or pictogram and a corresponding map pin, grouped by region and
+coloured by topic. Seven key figures sit below the date masthead.
+
+All news copy comes from the provided verified `facts1117.md`. Disputed claims are
+attributed; future plans and earlier outages are explicitly labelled and dated.
 
 Run with Node 22, standard library only and no network:
 
@@ -25,7 +30,20 @@ To regenerate the artwork on this machine:
 node src/render.mjs
 ```
 
-`src/build.mjs` draws all original SVG shapes and typesetting. Rendering uses installed
-Barlow Condensed, Fraunces and Source Sans 3 fonts, the local librsvg/Cairo libraries
-through Python ctypes, and Pillow for deterministic 256-colour PNG compression. Build files and a 300-pixel
-inspection preview are written under `build/`. No network or downloaded assets are used.
+`src/stories.mjs` holds the source-backed text. `src/build.mjs`, `src/art.mjs` and
+`src/lead-art.mjs` draw original SVG shapes and real text. Rendering uses installed
+Barlow Condensed, Fraunces and Source Sans 3 fonts and headless Chrome through a local
+DevTools pipe (`src/chrome.mjs`), with no npm packages or network requests. Pillow
+writes a lossless RGB PNG, preserving antialiased text; a 256-colour fallback is
+available if the image ever exceeds 1 MiB. `main.ts` only needs Node's standard library.
+
+Four visual review passes include full-size and 300-pixel inspection plus six crops
+at 2× per pass, covering every region. To regenerate inspection artifacts:
+
+```sh
+python3 src/review.py 4
+```
+
+Generated HTML/SVG, the 48-item text index, browser geometry audit, previews and crops
+are under ignored `build/`. The browser checks text containment, text collisions and
+text/illustration collisions for all 48 panels. No downloaded assets are used.

@@ -11,6 +11,6 @@ function run(program, args) {
 run(process.execPath, ['src/build.mjs']);
 mkdirSync('assets', { recursive: true });
 rmSync('build/raw.png', { force: true });
-run('python3', ['src/raster.py']);
+run(process.execPath, ['src/chrome.mjs']);
 if (!existsSync('build/raw.png')) throw new Error('No fresh raster image');
 run('python3', ['src/finish.py']);
